@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>食品表示ラベル生成</title>
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="container">
+        <h1>食品表示ラベル生成</h1>
+        <div class="main-content">
+            <div class="input-section">
+                <h2>原材料入力</h2>
+                <div class="ingredient-input">
+                    <div class="ingredient-row">
+                        <input type="text" class="ingredient-name" placeholder="原材料名" onblur="checkIngredient(this)">
+                        <input type="number" class="ingredient-weight" placeholder="重量(g)">
+                        <button onclick="addIngredient()">追加</button>
+                    </div>
+                </div>
+
+                <div id="compound-input" class="compound-input" style="display: none;">
+                    <h3>複合原材料の詳細</h3>
+                    <p class="hint">複合原材料の場合は詳細情報を入力してください</p>
+                    <textarea id="compound-details" placeholder="例：醤油の場合&#13;&#10;アミノ酸液、脱脂加工大豆、小麦、食塩／カラメル色素、調味料(アミノ酸等)"></textarea>
+                </div>
+
+                <div id="ingredients-list" class="ingredients-list">
+                    <h3>入力済み原材料（重量順）</h3>
+                    <!-- 原材料リストがここに表示されます -->
+                </div>
+
+                <!-- 原産地入力用モーダル -->
+                <div id="origin-modal" class="modal" style="display: none;">
+                    <div class="modal-content">
+                        <h3>原料原産地の入力</h3>
+                        <p id="origin-message"></p>
+                        <input type="text" id="origin-input" placeholder="原産地を入力">
+                        <div class="modal-buttons">
+                            <button onclick="confirmOrigin()">確定</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="product-info">
+                <h2>製品情報</h2>
+                <div class="form-group">
+                    <label for="productName">製品名:</label>
+                    <input type="text" id="productName">
+                </div>
+                <div class="form-group">
+                    <label for="manufacturer">製造者:</label>
+                    <input type="text" id="manufacturer">
+                </div>
+                <div class="form-group">
+                    <label for="netWeight">内容量(g):</label>
+                    <input type="number" id="netWeight">
+                </div>
+                <div class="form-group">
+                    <label for="storageMethod">保存方法:</label>
+                    <input type="text" id="storageMethod">
+                </div>
+                <div class="form-group">
+                    <label for="bestBefore">賞味期限:</label>
+                    <input type="date" id="bestBefore">
+                </div>
+            </div>
+
+            <div class="actions">
+                <button onclick="generateLabel()" class="generate-button">食品表示ラベル生成</button>
+            </div>
+
+            <div id="result" class="result">
+                <h2>生成結果</h2>
+                <div id="label-display">
+                    <!-- 生成されたラベルがここに表示されます -->
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="app.js"></script>
+</body>
+</html>

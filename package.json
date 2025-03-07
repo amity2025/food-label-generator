@@ -1,0 +1,18 @@
+{
+  "name": "food-label-generator",
+  "version": "1.0.0",
+  "description": "食品表示ラベル生成システム",
+  "main": "src/server.js",
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "jest"
+  },
+  "dependencies": {
+    "express": "^4.18.2"
+  },
+  "devDependencies": {
+    "jest": "^29.7.0",
+    "nodemon": "^3.0.2"
+  }
+}
