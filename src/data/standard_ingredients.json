@@ -1,20 +1,57 @@
 {
-  "醤油": {
-    "標準原材料": ["大豆", "小麦", "食塩"],
-    "アレルギー": ["大豆", "小麦"],
-    "添加物例": [
-      "カラメル色素",
-      "調味料(アミノ酸等)",
-      "甘味料(ステビア)",
-      "甘味料(甘草)",
-      "アルコール",
-      "保存料(パラオキシ安息香酸)",
-      "保存料(安息香酸Na)"
-    ]
+  "省略可能な複合原材料": {
+    "醤油": {
+      "alternatives": ["しょうゆ", "shoyu", "soy sauce"],
+      "default_ingredients": "脱脂加工大豆、小麦、食塩／アルコール",
+      "contains_allergens": ["小麦", "大豆"]
+    },
+    "マヨネーズ": {
+      "alternatives": ["mayonnaise"],
+      "default_ingredients": "食用植物油脂、卵黄、醸造酢、食塩、調味料(アミノ酸等)",
+      "contains_allergens": ["卵"]
+    },
+    "ドレッシング": {
+      "alternatives": ["ドレッシング類", "dressing"],
+      "default_ingredients": "食用植物油脂、醸造酢、食塩、調味料(アミノ酸等)",
+      "contains_allergens": []
+    },
+    "みりん": {
+      "alternatives": ["味醂", "mirin"],
+      "default_ingredients": "もち米、米こうじ、醸造アルコール、糖類",
+      "contains_allergens": []
+    },
+    "料理酒": {
+      "alternatives": ["cooking wine", "cooking sake", "調理酒"],
+      "default_ingredients": "米、米こうじ、食塩、調味料(アミノ酸等)",
+      "contains_allergens": []
+    },
+    "味噌": {
+      "alternatives": ["みそ", "miso"],
+      "default_ingredients": "大豆、米、食塩",
+      "contains_allergens": ["大豆"]
+    },
+    "酢": {
+      "alternatives": ["vinegar", "食酢"],
+      "default_ingredients": "醸造酢、調味料(アミノ酸)",
+      "contains_allergens": []
+    },
+    "ごま油": {
+      "alternatives": ["胡麻油", "sesame oil"],
+      "default_ingredients": "食用ごま油",
+      "contains_allergens": ["ごま"]
+    },
+    "かつお節": {
+      "alternatives": ["bonito flakes", "鰹節"],
+      "default_ingredients": "かつお、調味料(アミノ酸等)",
+      "contains_allergens": []
+    },
+    "塩麹": {
+      "alternatives": ["塩こうじ", "しおこうじ", "salt koji"],
+      "default_ingredients": "米麴、食塩",
+      "contains_allergens": []
+    }
   },
-  "みりん": {
-    "標準原材料": ["もち米", "米こうじ", "醸造アルコール", "糖類"],
-    "アレルギー": [],
-    "添加物例": []
+  "配合割合基準": {
+    "省略可能割合": 5.0
   }
 }

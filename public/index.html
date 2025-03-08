@@ -14,16 +14,24 @@
                 <h2>原材料入力</h2>
                 <div class="ingredient-input">
                     <div class="ingredient-row">
-                        <input type="text" class="ingredient-name" placeholder="原材料名" onblur="checkIngredient(this)">
+                        <input type="text" class="ingredient-name" placeholder="原材料名">
                         <input type="number" class="ingredient-weight" placeholder="重量(g)">
-                        <button onclick="addIngredient()">追加</button>
                     </div>
                 </div>
 
-                <div id="compound-input" class="compound-input" style="display: none;">
-                    <h3>複合原材料の詳細</h3>
-                    <p class="hint">複合原材料の場合は詳細情報を入力してください</p>
-                    <textarea id="compound-details" placeholder="例：醤油の場合&#13;&#10;アミノ酸液、脱脂加工大豆、小麦、食塩／カラメル色素、調味料(アミノ酸等)"></textarea>
+                <div class="compound-input">
+                    <h3>原材料の詳細情報</h3>
+                    <div class="simple-ingredient-check">
+                        <label>
+                            <input type="checkbox" id="simple-ingredient" onchange="toggleDetailInput()">
+                            この原材料は単一原材料です（複合原材料ではありません）
+                        </label>
+                    </div>
+                    <div id="detail-input-area">
+                        <p class="hint">原材料の詳細情報を入力してください</p>
+                        <textarea id="compound-details" placeholder="例：醤油の場合&#13;&#10;アミノ酸液、脱脂加工大豆、小麦、食塩／カラメル色素、調味料(アミノ酸等)"></textarea>
+                    </div>
+                    <button onclick="addIngredient()" class="add-ingredient-btn">原材料を追加</button>
                 </div>
 
                 <div id="ingredients-list" class="ingredients-list">

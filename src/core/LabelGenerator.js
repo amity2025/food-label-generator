@@ -8,6 +8,80 @@ class LabelGenerator {
     this.standardIngredients = require('../data/standard_ingredients.json');
   }
 
+  isStandardIngredient(name) {
+    const standards = this.standardIngredients['省略可能な複合原材料'];
+    const normalizedName = name.toLowerCase();
+
+    return Object.entries(standards).some(([key, data]) => {
+      const allNames = [
+        key.toLowerCase(),
+        ...(data.alternatives || []).map(alt => alt.toLowerCase())
+      ];
+      return allNames.includes(normalizedName);
+    });
+  }
+
+  getStandardIngredientInfo(name) {
+    const standards = this.standardIngredients['省略可能な複合原材料'];
+    const normalizedName = name.toLowerCase();
+
+    for (const [key, data] of Object.entries(standards)) {
+      const allNames = [
+        key.toLowerCase(),
+        ...(data.alternatives || []).map(alt => alt.toLowerCase())
+      ];
+      if (allNames.includes(normalizedName)) {
+        return {
+          name: key,
+          ...data
+        };
+      }
+    }
+    return null;
+  }
+
+  shouldSkipCompoundDetails(ingredient, totalWeight) {
+    // 標準的な複合原材料でない場合は省略しない
+    if (!this.isStandardIngredient(ingredient.name)) {
+      return false;
+    }
+
+    // 5%未満の場合のみ複合原材料の詳細を省略
+    const percentage = (ingredient.weight / totalWeight) * 100;
+    return percentage < this.standardIngredients.配合割合基準.省略可能割合;
+  }
+
+  extractMainIngredientsAndAdditives(text) {
+    if (!text) return { mainIngredients: '', additives: [] };
+
+    const parts = text.split(/[\/／]/).map(part => part.trim());
+    return {
+      mainIngredients: parts[0],
+      additives: parts[1] ? this.extractAdditivesFromText(parts[1]) : []
+    };
+  }
+
+  analyzeCompoundIngredient(details) {
+    const result = {
+      allergens: [],
+      additives: []
+    };
+
+    if (!details) return result;
+
+    const { mainIngredients, additives } = this.extractMainIngredientsAndAdditives(details);
+    
+    if (mainIngredients) {
+      result.allergens = this.extractAllergensFromText(mainIngredients);
+    }
+
+    if (additives) {
+      result.additives = additives;
+    }
+
+    return result;
+  }
+
   extractAdditivesFromText(text) {
     if (!text) return [];
 
@@ -15,7 +89,6 @@ class LabelGenerator {
     let currentPart = '';
     let bracketCount = 0;
 
-    // 括弧の対応を考慮しながら分割
     for (let i = 0; i < text.length; i++) {
       const char = text[i];
       if (char === '（' || char === '(') {
@@ -62,24 +135,10 @@ class LabelGenerator {
           continue;
         }
 
-        if (name === '調味料' && contents === 'アミノ酸等') {
-          result.push('調味料(アミノ酸等)');
-          continue;
-        }
-
-        if (this.additives.一括名[name]) {
-          result.push(part);
-          continue;
-        }
-
         result.push(part);
       } else {
         if (!this.isSkippableAdditive(part)) {
-          if (this.additives.一括名[part]) {
-            result.push(part);
-          } else {
-            result.push(part);
-          }
+          result.push(part);
         }
       }
     }
@@ -89,41 +148,6 @@ class LabelGenerator {
         result.push(`${category}(${items.join('、')})`);
       }
     });
-
-    const orderedResult = [];
-    const desiredOrder = ['カラメル色素', '調味料', '甘味料', '保存料'];
-
-    desiredOrder.forEach(prefix => {
-      const matching = result.find(item => item.startsWith(prefix));
-      if (matching) {
-        orderedResult.push(matching);
-      }
-    });
-
-    result.forEach(item => {
-      if (!orderedResult.includes(item)) {
-        orderedResult.push(item);
-      }
-    });
-
-    return orderedResult;
-  }
-
-  analyzeCompoundIngredient(details) {
-    const result = {
-      allergens: [],
-      additives: []
-    };
-
-    const [mainPart, additivePart] = details.split(/[\/／]/).map(part => part.trim());
-    
-    if (mainPart) {
-      result.allergens = this.extractAllergensFromText(mainPart);
-    }
-
-    if (additivePart) {
-      result.additives = this.extractAdditivesFromText(additivePart);
-    }
 
     return result;
   }
@@ -171,15 +195,52 @@ class LabelGenerator {
       const recommendedAllergens = new Set();
       const allAdditives = new Set();
 
+      // 総重量を計算
+      const totalWeight = ingredients.reduce((sum, ing) => sum + ing.weight, 0);
+
       // 原材料を重量順にソート
       const sortedIngredients = [...ingredients].sort((a, b) => b.weight - a.weight);
 
-      // 最も重量の多い原材料を特定
-      const primaryIngredient = sortedIngredients[0];
+      // 表示用の原材料名リスト
+      const displayIngredients = [];
 
       // 原材料の処理
       sortedIngredients.forEach(ing => {
-        // 原材料名から直接アレルギー物質を検出
+        const isStandard = this.isStandardIngredient(ing.name);
+        const skipDetails = this.shouldSkipCompoundDetails(ing, totalWeight);
+
+        // アレルギー情報の収集
+        if (isStandard) {
+          const info = this.getStandardIngredientInfo(ing.name);
+          info.contains_allergens.forEach(allergen => {
+            if (this.isRequiredAllergen(allergen)) {
+              mandatoryAllergens.add(allergen);
+            } else {
+              recommendedAllergens.add(allergen);
+            }
+          });
+        }
+
+        // 原材料表示の生成
+        let ingredientDisplay = ing.name;
+
+        // 複合原材料の詳細情報の処理
+        if (ing.detailIngredients && !skipDetails) {
+          const { mainIngredients, additives } = this.extractMainIngredientsAndAdditives(ing.detailIngredients);
+          
+          if (!isStandard) {
+            // 標準的でない複合原材料は詳細を表示
+            ingredientDisplay = `${ing.name}（${mainIngredients}）`;
+          }
+          
+          // 添加物を収集
+          additives.forEach(additive => allAdditives.add(additive));
+        }
+
+        // 原材料を表示リストに追加
+        displayIngredients.push(ingredientDisplay);
+
+        // 直接のアレルギー情報を検出
         const directAllergens = this.extractAllergensFromText(ing.name);
         directAllergens.forEach(allergen => {
           if (this.isRequiredAllergen(allergen)) {
@@ -189,10 +250,10 @@ class LabelGenerator {
           }
         });
 
-        // 複合原材料の詳細情報からの検出
+        // 複合原材料からのアレルギー情報を検出
         if (ing.detailIngredients) {
           const analysis = this.analyzeCompoundIngredient(ing.detailIngredients);
-
+          
           analysis.allergens.forEach(allergen => {
             if (this.isRequiredAllergen(allergen)) {
               mandatoryAllergens.add(allergen);
@@ -201,10 +262,9 @@ class LabelGenerator {
             }
           });
 
-          if (analysis.additives && analysis.additives.length > 0) {
-            analysis.additives.forEach(additive => {
-              allAdditives.add(additive);
-            });
+          // 添加物は常に収集
+          if (analysis.additives) {
+            analysis.additives.forEach(additive => allAdditives.add(additive));
           }
         }
       });
@@ -212,21 +272,21 @@ class LabelGenerator {
       // ラベル情報の生成
       label.名称 = productName;
 
-      // 原材料名の生成（原料原産地表示を含む）
-      const ingredientList = sortedIngredients.map((ing, index) => {
-        if (index === 0 && ing.origin) {
-          // 最も重量の多い原材料には原産地を表示
-          return `${ing.name}（${ing.origin}製造）`;
-        }
-        return ing.name;
-      });
+      // 原料原産地表示
+      const mainIngredient = sortedIngredients[0];
+      if (mainIngredient && mainIngredient.origin && displayIngredients.length > 0) {
+        displayIngredients[0] = `${displayIngredients[0]}（${mainIngredient.origin}製造）`;
+      }
 
-      label.原材料名 = ingredientList.join('、');
+      // 原材料名を結合
+      label.原材料名 = displayIngredients.join('、');
 
+      // 添加物を最後にまとめて表示
       if (allAdditives.size > 0) {
         label.原材料名 += `／${Array.from(allAdditives).join('、')}`;
       }
 
+      // アレルギー表示を追加
       const allergenDisplay = [
         ...Array.from(mandatoryAllergens).sort(),
         ...Array.from(recommendedAllergens).sort()
@@ -263,12 +323,6 @@ class LabelGenerator {
   isRequiredAllergen(name) {
     return this.allergens['特定原材料（義務表示）'].some(
       allergen => allergen.name === name
-    );
-  }
-
-  isCompoundIngredient(name) {
-    return Object.keys(this.standardIngredients).some(key => 
-      name.toLowerCase().includes(key.toLowerCase())
     );
   }
 }

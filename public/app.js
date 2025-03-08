@@ -1,238 +1,224 @@
 let ingredients = [];
-let pendingIngredient = null;
+let pendingLabelGeneration = null;
 
-function addIngredient() {
-  const nameInput = document.querySelector('.ingredient-name');
-  const weightInput = document.querySelector('.ingredient-weight');
-  const detailsArea = document.getElementById('compound-details');
+function toggleDetailInput() {
+    const checkbox = document.getElementById('simple-ingredient');
+    const detailArea = document.getElementById('detail-input-area');
+    const textarea = document.getElementById('compound-details');
 
-  const name = nameInput.value.trim();
-  const weight = parseFloat(weightInput.value);
-
-  if (!name || !weight) {
-    alert('原材料名と重量を入力してください');
-    return;
-  }
-
-  // 複合原材料の場合、詳細が必要
-  if (pendingIngredient && pendingIngredient.needsDetails && !detailsArea.value.trim()) {
-    alert('複合原材料の詳細を入力してください');
-    return;
-  }
-
-  const ingredient = {
-    name,
-    weight,
-    detailIngredients: detailsArea.value.trim() || null
-  };
-
-  ingredients.push(ingredient);
-  updateIngredientsList();
-  clearInputs();
+    if (checkbox.checked) {
+        detailArea.classList.add('disabled');
+        textarea.value = '';  // 詳細情報をクリア
+    } else {
+        detailArea.classList.remove('disabled');
+    }
 }
 
-function findMaxWeightIngredient() {
-  return ingredients.reduce((max, current) => 
-    current.weight > (max?.weight || 0) ? current : max
-  , null);
+function addIngredient() {
+    const nameInput = document.querySelector('.ingredient-name');
+    const weightInput = document.querySelector('.ingredient-weight');
+    const detailsArea = document.getElementById('compound-details');
+    const isSimple = document.getElementById('simple-ingredient').checked;
+
+    const name = nameInput.value.trim();
+    const weight = parseFloat(weightInput.value);
+
+    // 基本バリデーション
+    if (!name || !weight) {
+        alert('原材料名と重量を入力してください');
+        return;
+    }
+
+    // 詳細情報のバリデーション
+    if (!isSimple && !detailsArea.value.trim()) {
+        alert('原材料の詳細情報を入力するか、単一原材料の場合はチェックボックスにチェックを入れてください');
+        return;
+    }
+
+    const ingredient = {
+        name,
+        weight,
+        isSimple,
+        detailIngredients: isSimple ? null : detailsArea.value.trim()
+    };
+
+    ingredients.push(ingredient);
+    updateIngredientsList();
+    clearInputs();
 }
 
 function clearInputs() {
-  document.querySelector('.ingredient-name').value = '';
-  document.querySelector('.ingredient-weight').value = '';
-  document.getElementById('compound-details').value = '';
-  hideCompoundInput();
-  pendingIngredient = null;
+    document.querySelector('.ingredient-name').value = '';
+    document.querySelector('.ingredient-weight').value = '';
+    document.getElementById('compound-details').value = '';
+    document.getElementById('simple-ingredient').checked = false;
+    toggleDetailInput();  // 詳細入力エリアを再表示
 }
 
 function removeIngredient(index) {
-  ingredients.splice(index, 1);
-  updateIngredientsList();
+    ingredients.splice(index, 1);
+    updateIngredientsList();
 }
 
 function updateIngredientsList() {
-  const list = document.getElementById('ingredients-list');
-  list.innerHTML = '<h3>入力済み原材料（重量順）</h3>';
+    const list = document.getElementById('ingredients-list');
+    list.innerHTML = '<h3>入力済み原材料（重量順）</h3>';
 
-  // 重量順にソート
-  const sortedIngredients = [...ingredients].sort((a, b) => b.weight - a.weight);
+    // 重量順にソート
+    const sortedIngredients = [...ingredients].sort((a, b) => b.weight - a.weight);
 
-  sortedIngredients.forEach((ing, index) => {
-    const item = document.createElement('div');
-    item.className = 'ingredient-item';
-    
-    let content = `
-      <div class="ingredient-info">
-        <span>${ing.name} (${ing.weight}g)</span>
-    `;
+    sortedIngredients.forEach((ing, index) => {
+        const item = document.createElement('div');
+        item.className = 'ingredient-item';
+        
+        let content = `
+            <div class="ingredient-info">
+                <span>${ing.name} (${ing.weight}g)`;
 
-    if (ing.origin) {
-      content += `<div class="ingredient-origin-display">(${ing.origin}製造)</div>`;
-    }
+        if (ing.isSimple) {
+            content += '<span class="simple-mark">単一原材料</span>';
+        }
+        
+        content += '</span>';
 
-    if (ing.detailIngredients) {
-      content += `
-        <div class="details">
-          詳細: ${ing.detailIngredients}
-        </div>
-      `;
-    }
+        if (ing.origin) {
+            content += `<div class="ingredient-origin-display">(${ing.origin}製造)</div>`;
+        }
 
-    content += `</div>
-      <button onclick="removeIngredient(${ingredients.indexOf(ing)})">削除</button>
-    `;
+        if (ing.detailIngredients) {
+            content += `
+                <div class="details">
+                    詳細: ${ing.detailIngredients}
+                </div>
+            `;
+        }
 
-    item.innerHTML = content;
-    list.appendChild(item);
-  });
-}
+        content += `</div>
+            <button onclick="removeIngredient(${ingredients.indexOf(ing)})">削除</button>
+        `;
 
-async function checkIngredient(input) {
-  const name = input.value.trim();
-  if (!name) return;
-
-  try {
-    const response = await fetch('/api/check-ingredient', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({ name })
+        item.innerHTML = content;
+        list.appendChild(item);
     });
-
-    const result = await response.json();
-    if (result.status === 'success' && result.data.isCompound) {
-      pendingIngredient = { name, needsDetails: true };
-      showCompoundInput();
-    } else {
-      hideCompoundInput();
-      pendingIngredient = null;
-    }
-  } catch (error) {
-    console.error('Error checking ingredient:', error);
-  }
-}
-
-function showCompoundInput() {
-  document.getElementById('compound-input').style.display = 'block';
-}
-
-function hideCompoundInput() {
-  document.getElementById('compound-input').style.display = 'none';
 }
 
 function showOriginDialog(ingredient) {
-  const modal = document.getElementById('origin-modal');
-  const message = document.getElementById('origin-message');
-  const input = document.getElementById('origin-input');
+    const modal = document.getElementById('origin-modal');
+    const message = document.getElementById('origin-message');
+    const input = document.getElementById('origin-input');
 
-  message.textContent = `
-    以下の原材料が最も使用量が多いため、原産地の入力が必要です：
-    ${ingredient.name}（${ingredient.weight}g）
-  `;
-  modal.style.display = 'block';
-  input.value = '';
-  input.focus();
+    message.textContent = `
+        以下の原材料が最も使用量が多いため、原産地の入力が必要です：
+        ${ingredient.name}（${ingredient.weight}g）
+    `;
+    modal.style.display = 'block';
+    input.value = '';
+    input.focus();
 }
 
-let pendingLabelGeneration = null;
-
 function confirmOrigin() {
-  const input = document.getElementById('origin-input');
-  const origin = input.value.trim();
+    const input = document.getElementById('origin-input');
+    const origin = input.value.trim();
 
-  if (!origin) {
-    alert('原産地を入力してください');
-    return;
-  }
+    if (!origin) {
+        alert('原産地を入力してください');
+        return;
+    }
 
-  const maxWeightIngredient = findMaxWeightIngredient();
-  if (maxWeightIngredient) {
-    maxWeightIngredient.origin = origin;
-    updateIngredientsList();
-  }
+    const maxWeightIngredient = findMaxWeightIngredient();
+    if (maxWeightIngredient) {
+        maxWeightIngredient.origin = origin;
+        updateIngredientsList();
+    }
 
-  document.getElementById('origin-modal').style.display = 'none';
+    document.getElementById('origin-modal').style.display = 'none';
 
-  // 保留中のラベル生成があれば実行
-  if (pendingLabelGeneration) {
-    const productData = pendingLabelGeneration;
-    pendingLabelGeneration = null;
-    generateLabelInternal(productData);
-  }
+    // 保留中のラベル生成があれば実行
+    if (pendingLabelGeneration) {
+        const productData = pendingLabelGeneration;
+        pendingLabelGeneration = null;
+        generateLabelInternal(productData);
+    }
+}
+
+function findMaxWeightIngredient() {
+    return ingredients.reduce((max, current) => 
+        current.weight > (max?.weight || 0) ? current : max
+    , null);
 }
 
 async function generateLabel() {
-  if (ingredients.length === 0) {
-    alert('原材料を入力してください');
-    return;
-  }
+    if (ingredients.length === 0) {
+        alert('原材料を入力してください');
+        return;
+    }
 
-  const productData = {
-    productName: document.getElementById('productName').value,
-    manufacturer: document.getElementById('manufacturer').value,
-    ingredients: ingredients,
-    netWeight: parseFloat(document.getElementById('netWeight').value),
-    storageMethod: document.getElementById('storageMethod').value,
-    bestBefore: document.getElementById('bestBefore').value
-  };
+    const productData = {
+        productName: document.getElementById('productName').value,
+        manufacturer: document.getElementById('manufacturer').value,
+        ingredients: ingredients,
+        netWeight: parseFloat(document.getElementById('netWeight').value),
+        storageMethod: document.getElementById('storageMethod').value,
+        bestBefore: document.getElementById('bestBefore').value
+    };
 
-  // 必須フィールドのチェック
-  if (!productData.productName || !productData.manufacturer || !productData.netWeight) {
-    alert('製品名、製造者、内容量は必須項目です');
-    return;
-  }
+    // 必須フィールドのチェック
+    if (!productData.productName || !productData.manufacturer || !productData.netWeight) {
+        alert('製品名、製造者、内容量は必須項目です');
+        return;
+    }
 
-  // 最大重量の原材料を特定
-  const maxWeightIngredient = findMaxWeightIngredient();
-  
-  // 原産地が未設定の場合
-  if (!maxWeightIngredient.origin) {
-    pendingLabelGeneration = productData;
-    showOriginDialog(maxWeightIngredient);
-    return;
-  }
+    // 最大重量の原材料を特定
+    const maxWeightIngredient = findMaxWeightIngredient();
+    
+    // 原産地が未設定の場合
+    if (!maxWeightIngredient.origin) {
+        pendingLabelGeneration = productData;
+        showOriginDialog(maxWeightIngredient);
+        return;
+    }
 
-  // 原産地が設定済みの場合は直接生成
-  await generateLabelInternal(productData);
+    // 原産地が設定済みの場合は直接生成
+    await generateLabelInternal(productData);
 }
 
 async function generateLabelInternal(productData) {
-  try {
-    const response = await fetch('/api/generate-label', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(productData)
-    });
+    try {
+        const response = await fetch('/api/generate-label', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(productData)
+        });
 
-    const result = await response.json();
-    if (result.status === 'success') {
-      displayLabel(result.data);
-    } else {
-      alert('ラベルの生成に失敗しました: ' + result.message);
+        const result = await response.json();
+        if (result.status === 'success') {
+            displayLabel(result.data);
+        } else {
+            alert('ラベルの生成に失敗しました: ' + result.message);
+        }
+    } catch (error) {
+        console.error('Error generating label:', error);
+        alert('ラベルの生成中にエラーが発生しました');
     }
-  } catch (error) {
-    console.error('Error generating label:', error);
-    alert('ラベルの生成中にエラーが発生しました');
-  }
 }
 
 function displayLabel(label) {
-  const display = document.getElementById('label-display');
-  let content = '';
+    const display = document.getElementById('label-display');
+    let content = '';
 
-  for (const [key, value] of Object.entries(label)) {
-    if (value) {
-      content += `【${key}】\n${value}\n\n`;
+    for (const [key, value] of Object.entries(label)) {
+        if (value) {
+            content += `【${key}】\n${value}\n\n`;
+        }
     }
-  }
 
-  display.textContent = content;
+    display.textContent = content;
 }
 
 // 初期化
 document.addEventListener('DOMContentLoaded', () => {
-  updateIngredientsList();
+    updateIngredientsList();
+    toggleDetailInput();  // 初期状態の設定
 });
